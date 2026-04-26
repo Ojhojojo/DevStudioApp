@@ -1,0 +1,176 @@
+@page "/projects"
+@using System.ComponentModel.DataAnnotations
+@using DevStudioApp.Services
+@using DevStudioDomain.Entities
+@inject IProjectService ProjectService
+@inject ISnackbar Snackbar
+@inject ILogger<Projects> Logger
+
+<MudText Typo="Typo.h4" GutterBottom="true">Projects</MudText>
+<MudText Typo="Typo.body2" Class="mb-4">
+    Manage local repositories and their Azure Repos links.
+</MudText>
+
+<MudPaper Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">@(_isEditing ? "Edit Project" : "New Project")</MudText>
+
+    <EditForm Model="_model" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudTextField Label="Project Name" @bind-Value="_model.Name" Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudTextField Label="Local Repository Folder" @bind-Value="_model.LocalRepoPath" Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudTextField Label="Azure Repos URL" @bind-Value="_model.RemoteAzureRepoUrl" Required="true" />
+            </MudItem>
+            <MudItem xs="12">
+                <ValidationSummary />
+            </MudItem>
+            <MudItem xs="12" Class="d-flex" Style="gap: 8px;">
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">
+                    @(_isEditing ? "Update Project" : "Create Project")
+                </MudButton>
+                @if (_isEditing)
+                {
+                    <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="CancelEdit">
+                        Cancel
+                    </MudButton>
+                }
+            </MudItem>
+        </MudGrid>
+    </EditForm>
+</MudPaper>
+
+<MudTable T="Project" Items="_projects" Hover="true" Dense="true">
+    <HeaderContent>
+        <MudTh>Name</MudTh>
+        <MudTh>Local Path</MudTh>
+        <MudTh>Remote URL</MudTh>
+        <MudTh>Active</MudTh>
+        <MudTh>Actions</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Name">@context.Name</MudTd>
+        <MudTd DataLabel="Local Path">@context.LocalRepoPath</MudTd>
+        <MudTd DataLabel="Remote URL">@context.RemoteAzureRepoUrl</MudTd>
+        <MudTd DataLabel="Active">@(context.Id == _activeProjectId ? "Yes" : "No")</MudTd>
+        <MudTd DataLabel="Actions">
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" OnClick="() => StartEdit(context)">
+                Edit
+            </MudButton>
+            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="() => SetActiveAsync(context.Id)">
+                Make Active
+            </MudButton>
+            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="() => DeleteAsync(context.Id)">
+                Delete
+            </MudButton>
+        </MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private readonly List<Project> _projects = [];
+    private ProjectModel _model = new();
+    private int? _editingProjectId;
+    private bool _isEditing;
+    private int? _activeProjectId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _projects.Clear();
+        _projects.AddRange(await ProjectService.ListAsync());
+        _activeProjectId = await ProjectService.GetActiveProjectIdAsync();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_isEditing && _editingProjectId is not null)
+        {
+            await ProjectService.UpdateAsync(new Project
+            {
+                Id = _editingProjectId.Value,
+                Name = _model.Name,
+                LocalRepoPath = _model.LocalRepoPath,
+                RemoteAzureRepoUrl = _model.RemoteAzureRepoUrl
+            });
+
+            Snackbar.Add("Project updated.", Severity.Success);
+            Logger.LogInformation("Project {ProjectId} updated.", _editingProjectId.Value);
+        }
+        else
+        {
+            var created = await ProjectService.CreateAsync(new Project
+            {
+                Name = _model.Name,
+                LocalRepoPath = _model.LocalRepoPath,
+                RemoteAzureRepoUrl = _model.RemoteAzureRepoUrl
+            });
+
+            Snackbar.Add("Project created.", Severity.Success);
+            Logger.LogInformation("Project {ProjectId} created.", created.Id);
+        }
+
+        ResetForm();
+        await LoadAsync();
+    }
+
+    private void StartEdit(Project project)
+    {
+        _isEditing = true;
+        _editingProjectId = project.Id;
+        _model = new ProjectModel
+        {
+            Name = project.Name,
+            LocalRepoPath = project.LocalRepoPath,
+            RemoteAzureRepoUrl = project.RemoteAzureRepoUrl
+        };
+    }
+
+    private void CancelEdit()
+    {
+        ResetForm();
+    }
+
+    private void ResetForm()
+    {
+        _isEditing = false;
+        _editingProjectId = null;
+        _model = new ProjectModel();
+    }
+
+    private async Task DeleteAsync(int projectId)
+    {
+        await ProjectService.DeleteAsync(projectId);
+        Snackbar.Add("Project deleted.", Severity.Info);
+        Logger.LogInformation("Project {ProjectId} deleted.", projectId);
+        await LoadAsync();
+    }
+
+    private async Task SetActiveAsync(int projectId)
+    {
+        await ProjectService.SetActiveProjectIdAsync(projectId);
+        _activeProjectId = projectId;
+        Snackbar.Add("Active project updated.", Severity.Success);
+    }
+
+    private sealed class ProjectModel
+    {
+        [Required]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        public string LocalRepoPath { get; set; } = string.Empty;
+
+        [Required]
+        [Url]
+        public string RemoteAzureRepoUrl { get; set; } = string.Empty;
+    }
+}

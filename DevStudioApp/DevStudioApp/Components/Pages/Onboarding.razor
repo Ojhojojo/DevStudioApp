@@ -1,0 +1,41 @@
+@page "/onboarding"
+@using DevStudioApp.Services
+@inject ISetupStatusService SetupStatusService
+
+<MudText Typo="Typo.h4" GutterBottom="true">First-Run Setup</MudText>
+<MudText Typo="Typo.body2" Class="mb-4">
+    Complete these prerequisites before using the rest of the app.
+</MudText>
+
+<MudList T="string" Dense="true" Class="mb-4">
+    <MudListItem Text="@($"At least one project configured: {AsYesNo(_status.HasProject)}")" />
+    <MudListItem Text="@($"Copilot token saved: {AsYesNo(_status.HasCopilotToken)}")" />
+    <MudListItem Text="@($"Azure PAT saved: {AsYesNo(_status.HasAzurePat)}")" />
+</MudList>
+
+<MudStack Row="true" Spacing="2">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/projects">
+        Configure Projects
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/settings">
+        Configure Settings
+    </MudButton>
+</MudStack>
+
+@if (_status.IsComplete)
+{
+    <MudAlert Severity="Severity.Success" Dense="true" Class="mt-4">
+        Setup complete. You can now use the application.
+    </MudAlert>
+}
+
+@code {
+    private SetupStatus _status = new(false, false, false);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _status = await SetupStatusService.GetStatusAsync();
+    }
+
+    private static string AsYesNo(bool value) => value ? "Yes" : "No";
+}

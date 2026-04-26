@@ -1,0 +1,157 @@
+@page "/settings"
+@using System.ComponentModel.DataAnnotations
+@using DevStudioApp.Services
+@using DevStudioDomain.Entities
+@inject ITokenService TokenService
+@inject IAppSettingsService AppSettingsService
+@inject IConnectivityTestService ConnectivityTestService
+@inject ISnackbar Snackbar
+@inject ILogger<Settings> Logger
+
+<MudText Typo="Typo.h4" GutterBottom="true">Global Settings</MudText>
+<MudText Typo="Typo.body2" Class="mb-4">
+    Configure global tokens and app preferences.
+</MudText>
+
+<MudPaper Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Tokens</MudText>
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudTextField
+                Label="Copilot Token"
+                InputType="InputType.Password"
+                @bind-Value="_copilotToken"
+                Immediate="true" />
+        </MudItem>
+        <MudItem xs="12" md="6" Class="d-flex align-center">
+            <MudButton Variant="Variant.Outlined" OnClick="TestCopilotCliAsync">
+                Test Copilot CLI
+            </MudButton>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudTextField
+                Label="Azure PAT"
+                InputType="InputType.Password"
+                @bind-Value="_azurePat"
+                Immediate="true" />
+        </MudItem>
+        <MudItem xs="12" md="6" Class="d-flex align-center">
+            <MudButton Variant="Variant.Outlined" OnClick="TestAzureAsync">
+                Test Azure Connectivity
+            </MudButton>
+        </MudItem>
+        <MudItem xs="12">
+            <MudTextField Label="Azure Repo URL for connectivity test" @bind-Value="_model.LastRemoteAzureRepoUrl" />
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudPaper Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" GutterBottom="true">Preferences</MudText>
+    <EditForm Model="_model" OnValidSubmit="SaveAsync">
+        <DataAnnotationsValidator />
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudSelect T="string" Label="Theme" @bind-Value="_model.Theme">
+                    <MudSelectItem Value="@("light")">Light</MudSelectItem>
+                    <MudSelectItem Value="@("dark")">Dark</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudSelect T="string" Label="Logging Level" @bind-Value="_model.LoggingLevel">
+                    <MudSelectItem Value="@("Trace")">Trace</MudSelectItem>
+                    <MudSelectItem Value="@("Debug")">Debug</MudSelectItem>
+                    <MudSelectItem Value="@("Information")">Information</MudSelectItem>
+                    <MudSelectItem Value="@("Warning")">Warning</MudSelectItem>
+                    <MudSelectItem Value="@("Error")">Error</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudTextField Label="Default Worktree Base Path" @bind-Value="_model.DefaultWorktreeBasePath" />
+            </MudItem>
+            <MudItem xs="12">
+                <ValidationSummary />
+            </MudItem>
+            <MudItem xs="12">
+                <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">
+                    Save Settings
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </EditForm>
+</MudPaper>
+
+@if (!string.IsNullOrWhiteSpace(_lastTestOutput))
+{
+    <MudAlert Severity="Severity.Info" Dense="true">
+        @_lastTestOutput
+    </MudAlert>
+}
+
+@code {
+    private SettingsModel _model = new();
+    private string _copilotToken = string.Empty;
+    private string _azurePat = string.Empty;
+    private string _lastTestOutput = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var settings = await AppSettingsService.GetAsync();
+        _model = new SettingsModel
+        {
+            Theme = settings.Theme,
+            LoggingLevel = settings.LoggingLevel,
+            DefaultWorktreeBasePath = settings.DefaultWorktreeBasePath
+        };
+
+        _copilotToken = await TokenService.GetCopilotTokenAsync() ?? string.Empty;
+        _azurePat = await TokenService.GetAzurePatAsync() ?? string.Empty;
+    }
+
+    private async Task SaveAsync()
+    {
+        try
+        {
+            await AppSettingsService.SaveAsync(new AppSettings
+            {
+                Theme = _model.Theme,
+                LoggingLevel = _model.LoggingLevel,
+                DefaultWorktreeBasePath = _model.DefaultWorktreeBasePath
+            });
+            await TokenService.SetCopilotTokenAsync(_copilotToken);
+            await TokenService.SetAzurePatAsync(_azurePat);
+
+            Snackbar.Add("Settings saved.", Severity.Success);
+            Logger.LogInformation("Global settings saved.");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to save settings.");
+            Snackbar.Add("Failed to save settings.", Severity.Error);
+        }
+    }
+
+    private async Task TestCopilotCliAsync()
+    {
+        _lastTestOutput = await ConnectivityTestService.TestCopilotCliAsync();
+    }
+
+    private async Task TestAzureAsync()
+    {
+        _lastTestOutput = await ConnectivityTestService.TestAzureRemoteAsync(_model.LastRemoteAzureRepoUrl);
+    }
+
+    private sealed class SettingsModel
+    {
+        [Required]
+        public string Theme { get; set; } = "light";
+
+        [Required]
+        public string LoggingLevel { get; set; } = "Information";
+
+        public string DefaultWorktreeBasePath { get; set; } = string.Empty;
+
+        [Url]
+        public string LastRemoteAzureRepoUrl { get; set; } = string.Empty;
+    }
+}
