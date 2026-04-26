@@ -1,5 +1,15 @@
 ﻿@page "/"
 
-<h1>Hello, world!</h1>
+<MudText Typo="Typo.h4" GutterBottom="true">Dev Agent Studio</MudText>
+<MudText Typo="Typo.body1" Class="mb-4">
+    Foundation is ready. Continue setup from Projects and Settings.
+</MudText>
 
-Welcome to your new app.
+<MudStack Row="true" Spacing="2">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/projects" StartIcon="@Icons.Material.Filled.Folder">
+        Open Projects
+    </MudButton>
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/settings" StartIcon="@Icons.Material.Filled.Settings">
+        Open Settings
+    </MudButton>
+</MudStack>

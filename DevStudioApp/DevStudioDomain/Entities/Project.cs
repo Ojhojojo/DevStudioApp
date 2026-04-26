@@ -13,15 +13,12 @@ public class Project
 
     [Required]
     [MaxLength(500)]
-    public required string LocalPath { get; set; }
+    public required string LocalRepoPath { get; set; }
 
     [Required]
     [MaxLength(500)]
-    public required string RemoteUrl { get; set; }
+    public required string RemoteAzureRepoUrl { get; set; }
 
-    [Required]
-    [MaxLength(500)]
-    public required string AzureDevOpsProject { get; set; }
-
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
 }

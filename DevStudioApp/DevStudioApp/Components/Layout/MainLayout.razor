@@ -1,16 +1,120 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager NavigationManager
+@inject DevStudioApp.Services.ISetupStatusService SetupStatusService
 
-<MudThemeProvider />
+<MudThemeProvider @bind-IsDarkMode="_isDarkMode" Theme="_theme" />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
 <MudLayout>
-    <MudAppBar Elevation="1">
-        <MudText Typo="Typo.h5" Class="ml-2">🤖 Dev Studio</MudText>
+    <MudAppBar Elevation="1" Color="Color.Primary">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
+        <MudText Typo="Typo.h6" Class="ml-2">Dev Agent Studio</MudText>
         <MudSpacer />
-        <MudLink Href="settings" Color="Color.Primary" Underline="Underline.None">Settings</MudLink>
+        <MudIconButton
+            Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+            Color="Color.Inherit"
+            OnClick="ToggleTheme"
+            aria-label="Toggle theme" />
+        <MudIconButton
+            Icon="@Icons.Material.Filled.Settings"
+            Color="Color.Inherit"
+            Href="/settings"
+            aria-label="Open settings" />
     </MudAppBar>
-    <MudMainContent Class="pa-4">
-        @Body
+
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="1" Variant="DrawerVariant.Responsive" ClipMode="DrawerClipMode.Always">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="pa-6">
+            @Body
+        </MudContainer>
     </MudMainContent>
 </MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isDarkMode;
+    private bool _isCheckingSetup;
+
+    private readonly MudTheme _theme = new()
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = Colors.Blue.Darken2
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = Colors.Blue.Lighten1
+        }
+    };
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private void ToggleTheme()
+    {
+        _isDarkMode = !_isDarkMode;
+    }
+
+    protected override void OnInitialized()
+    {
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        await EnforceSetupAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await EnforceSetupAsync();
+        }
+    }
+
+    private async Task EnforceSetupAsync()
+    {
+        if (_isCheckingSetup)
+        {
+            return;
+        }
+
+        _isCheckingSetup = true;
+        try
+        {
+            var status = await SetupStatusService.GetStatusAsync();
+            if (status.IsComplete)
+            {
+                return;
+            }
+
+            var path = NavigationManager.ToBaseRelativePath(NavigationManager.Uri).ToLowerInvariant();
+            var isAllowedRoute = string.IsNullOrWhiteSpace(path)
+                || path.StartsWith("settings")
+                || path.StartsWith("projects")
+                || path.StartsWith("onboarding");
+
+            if (!isAllowedRoute)
+            {
+                NavigationManager.NavigateTo("/onboarding");
+            }
+        }
+        finally
+        {
+            _isCheckingSetup = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}
