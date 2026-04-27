@@ -21,6 +21,9 @@ public class AppDbContext : DbContext
             .HasForeignKey(k => k.ProjectId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<WorkItem>()
+            .HasIndex(k => new { k.ProjectId, k.Status, k.Order });
+
         modelBuilder.Entity<Project>()
             .HasIndex(p => p.Name);
 
@@ -31,7 +34,7 @@ public class AppDbContext : DbContext
                 Theme = "light",
                 LoggingLevel = "Information",
                 DefaultWorktreeBasePath = string.Empty,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = new DateTime(2026, 4, 25, 8, 35, 53, 484, DateTimeKind.Utc).AddTicks(8046)
             });
     }
 }

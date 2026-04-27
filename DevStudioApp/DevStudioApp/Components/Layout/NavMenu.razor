@@ -1,13 +1,83 @@
-﻿<MudNavMenu Class="pa-4">
+﻿@using DevStudioApp.Services
+@using DevStudioDomain.Entities
+@implements IDisposable
+@inject IActiveProjectStore ActiveProjectStore
+@inject IProjectService ProjectService
+@inject NavigationManager NavigationManager
+
+<MudNavMenu Class="pa-4">
     <MudText Typo="Typo.overline" Class="pl-4 pb-2">Navigation</MudText>
 
     <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">
         Home
     </MudNavLink>
+    @if (ActiveProjectStore.Current is not null)
+    {
+        <MudNavLink Href="/board" Icon="@Icons.Material.Filled.ViewKanban">
+            Board
+        </MudNavLink>
+    }
     <MudNavLink Href="/projects" Icon="@Icons.Material.Filled.Folder">
         Projects
     </MudNavLink>
     <MudNavLink Href="/settings" Icon="@Icons.Material.Filled.Settings">
         Settings
     </MudNavLink>
+
+    <MudDivider Class="my-2" />
+
+    <MudText Typo="Typo.overline" Class="pl-4 pb-2">Projects</MudText>
+    <MudNavGroup Title="My Projects" Expanded="true" Icon="@Icons.Material.Filled.FolderSpecial">
+        @if (_projects.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="pa-3">No projects yet.</MudText>
+        }
+        else
+        {
+            @foreach (var project in _projects)
+            {
+                var isActive = ActiveProjectStore.Current?.Id == project.Id;
+                <MudNavLink
+                    OnClick="() => SelectProjectAsync(project.Id)"
+                    Icon="@(isActive ? Icons.Material.Filled.RadioButtonChecked : Icons.Material.Filled.RadioButtonUnchecked)">
+                    @project.Name
+                </MudNavLink>
+            }
+        }
+        <MudNavLink Href="/projects" Icon="@Icons.Material.Filled.Add">
+            New Project
+        </MudNavLink>
+    </MudNavGroup>
 </MudNavMenu>
+
+@code {
+    private List<Project> _projects = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        ActiveProjectStore.OnChange += HandleActiveChanged;
+        await LoadProjectsAsync();
+    }
+
+    private async Task LoadProjectsAsync()
+    {
+        _projects = await ProjectService.ListAsync();
+    }
+
+    private async void HandleActiveChanged()
+    {
+        await LoadProjectsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SelectProjectAsync(int projectId)
+    {
+        await ActiveProjectStore.SetActiveAsync(projectId);
+        NavigationManager.NavigateTo("/board");
+    }
+
+    public void Dispose()
+    {
+        ActiveProjectStore.OnChange -= HandleActiveChanged;
+    }
+}

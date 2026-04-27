@@ -1,4 +1,4 @@
-﻿# Dev Agent Studio - Project Plan (Revised v3)
+﻿# Dev Agent Studio - Project Plan (Revised v4)
 
 **Vision**  
 A local-first MAUI Blazor Hybrid desktop app with per-project Kanban boards. GitHub Copilot CLI handles AI tasks. All Git operations (clone, worktrees, push, PRs) target Azure Repos using a **single global Azure PAT**. Everything stays in-process and offline-first where possible.
@@ -11,92 +11,112 @@ A local-first MAUI Blazor Hybrid desktop app with per-project Kanban boards. Git
 - Vertical Slice + Clean Architecture
 - Global tokens → per-project repo linking
 
+## Execution Snapshot
+
+- [x] Phase 1 complete
+- [x] Phase 2 complete
+- [x] Phase 3 complete (one optional markdown follow-up remains)
+- [x] Phase 4 complete (happy-path git branch, commit, push)
+- [x] Phase 5 complete (Copilot CLI service + context + streaming + task actions)
+- [x] Phase 6 minimal slice complete (context + generate + review/edit + store)
+- [ ] Phase 7+ not started
+
+Execution references:
+- [Phase3-Execution-Plan.md](./Phase3-Execution-Plan.md)
+- [Phase4-Execution-Plan.md](./Phase4-Execution-Plan.md)
+- [Phase6-Execution-Plan.md](./Phase6-Execution-Plan.md)
+
 ## Phase 1: Foundation & Project Setup (1-2 days)
-- MAUI Blazor Hybrid .NET 8 solution
-- MudBlazor + MudBlazor.Extensions
-- Serilog logging
-- Basic layout (MudBlazor theme, dark/light)
-- **Milestone**: App runs with shell layout (sidebar + top bar + main area)
+- [x] MAUI Blazor Hybrid .NET 8 solution
+- [x] MudBlazor + MudBlazor.Extensions
+- [x] Serilog logging
+- [x] Basic layout (MudBlazor theme, dark/light)
+- [x] **Milestone**: App runs with shell layout (sidebar + top bar + main area)
 
 ## Phase 2: Storage, Global Settings & Project Management (2-3 days)
-- EF Core DbContext with migrations
-- Entities:
+- [x] EF Core DbContext with migrations
+- [x] Entities:
   - `AppSettings` (singleton record for global prefs)
   - `Project` (Id, Name, LocalRepoPath, RemoteAzureRepoUrl, CreatedAt, etc.)
-- `ITokenService` (SecureStorage) for:
+- [x] `ITokenService` (SecureStorage) for:
   - `CopilotToken`
   - `AzurePat`
-- **Global Settings Page** (`/settings`):
+- [x] **Global Settings Page** (`/settings`):
   - Copilot CLI token (masked, test button that runs `copilot --version`)
   - Global Azure PAT (masked, test button that calls `git ls-remote` or Azure REST)
   - General preferences (theme, default worktree base path, logging level, etc.)
-- **Project Management Page** (`/projects`):
+- [x] **Project Management Page** (`/projects`):
   - List of projects (MudDataGrid) with name, local path, remote URL preview
   - "New Project" button → form with:
     - Project Name
     - Local Repository Folder (MAUI FolderPicker)
     - Azure Repos URL[](https://dev.azure.com/...)
   - Edit / Delete project
-- Navigation:
+- [x] Navigation:
   - **Left Drawer (MudDrawer)**: "Projects" section – list of projects (click to switch active project) + "New Project" button
   - **Top AppBar**: App title, current project name (with dropdown to switch), Settings gear icon, Help
   - **Main content**: Changes based on route / active project (Kanban when project selected)
-- On first run: wizard forces creation of first project + token entry
-- **Milestone**: Can configure global tokens securely and manage multiple projects with local + Azure repo links
+- [ ] On first run: wizard forces creation of first project + token entry
+- [x] **Milestone**: Can configure global tokens securely and manage multiple projects with local + Azure repo links
 
 ## Phase 3: Kanban UI Core (per-project)
-- Kanban board scoped to Active Project (MudDataGrid or draggable cards)
-- Lanes: Backlog → Planned → In Progress → Review → Done
-- Task CRUD + Markdown editor
-- Drag & drop, filtering, search (project-scoped)
-- **Milestone**: Persistent per-project Kanban fully functional
+- [x] Kanban board scoped to Active Project (draggable cards implemented)
+- [x] Lanes: Backlog → Planned → In Progress → Review → Done
+- [x] Task CRUD
+- [x] Drag & drop, filtering, search (project-scoped)
+- [x] **Milestone**: Persistent per-project Kanban fully functional
+- [ ] Optional follow-up: rich MudEx markdown editor UX polish
 
 ## Phase 4: Git Integration & Safe Execution (Azure Repos)
-- LibGit2Sharp + credential injection from global Azure PAT
-- Or `git` CLI wrapper with `GIT_ASKPASS` / credential helper
-- Per-task worktrees in a project-specific base folder
-- Automatic remote handling from Project.RemoteAzureRepoUrl + global PAT
-- Clone (if needed), branch, commit, push
-- **Milestone**: Safe git operations against Azure Repos using stored global token
+- [x] `git` CLI wrapper baseline for branch provisioning
+- [x] Trigger automation on `planned` -> `in-progress`
+- [x] Branch format `feature/{itemId}-{slugTitle}` with suffix conflict handling
+- [x] Persist selected branch to `WorkItem.BranchName`
+- [x] Full automatic remote auth handling from global Azure PAT for happy-path push actions
+- [x] Commit and push orchestration (task-level actions)
+- [x] **Milestone**: Safe git operations against Azure Repos using stored global token (happy path)
+- [ ] Future enhancement: in-app developer approval/rework workflow after commit/push
 
 ## Phase 5: Copilot CLI Integration
-- `ICopilotCliService` with global Copilot token from SecureStorage
-- Process execution + streaming output
-- Context injection: current project’s local repo path
-- **Milestone**: Copilot CLI works from within tasks
+- [x] `ICopilotCliService` with global Copilot token from SecureStorage
+- [x] Process execution + streaming output
+- [x] Context injection: current project’s local repo path and task metadata
+- [x] Task/work-item UI action to run Copilot from dialog
+- [x] **Milestone**: Copilot CLI works from within tasks
 
 ## Phase 6: AI Planning & RAG Foundation
-- Per-project repo context gathering
-- Plan generation with human review screen
-- Plan storage linked to Project + Task
-- **Milestone**: AI planning flow works per project
+- [x] Per-project repo context gathering (bounded minimal context in planning service)
+- [x] Plan generation with human review screen (work item dialog)
+- [x] Plan storage linked to Project + Task (`WorkItem.Plan`)
+- [x] **Milestone**: AI planning flow works per project (minimal slice)
+- [ ] Future enhancement: richer RAG retrieval (vector/semantic search)
 
 ## Phase 7: Agent Execution Engine
-- Background runner with state machine (per project/task)
-- Pipeline: Plan → Copilot Code Gen → Build/Test → Commit → Push
-- Human approval gates
-- **Milestone**: End-to-end agent flow
+- [ ] Background runner with state machine (per project/task)
+- [ ] Pipeline: Plan → Copilot Code Gen → Build/Test → Commit → Push
+- [ ] Human approval gates
+- [ ] **Milestone**: End-to-end agent flow
 
 ## Phase 8: PR Creation
-- Push to Azure remote
-- Create draft PR via `az repos pr create` (CLI) or Azure DevOps REST SDK
-- Link PR URL back to task
-- **Milestone**: One-click PR creation
+- [ ] Push to Azure remote
+- [ ] Create draft PR via `az repos pr create` (CLI) or Azure DevOps REST SDK
+- [ ] Link PR URL back to task
+- [ ] **Milestone**: One-click PR creation
 
-## Phase 8: Polish & UX
-- Onboarding wizard
-- Notifications, keyboard shortcuts
-- Export/import
-- Error handling & logging
+## Phase 9: Polish & UX
+- [ ] Onboarding wizard
+- [ ] Notifications, keyboard shortcuts
+- [ ] Export/import
+- [ ] Error handling & logging
 
 ## Phase 10: Future
-- Local RAG (Ollama)
-- Plugins, multi-agent, etc.
+- [ ] Local RAG (Ollama)
+- [ ] Plugins, multi-agent, etc.
 
 ## Non-Functional
-- Tokens never plaintext
-- Global PAT reused everywhere
-- Strong separation: Settings (global) vs Projects (repo-specific)
+- [x] Tokens never plaintext
+- [x] Global PAT reused everywhere (policy and current implementation direction)
+- [x] Strong separation: Settings (global) vs Projects (repo-specific)
 
 ## Decision Log
 - [x] Global Azure PAT only

@@ -1,14 +1,35 @@
 ﻿@page "/"
+@using DevStudioApp.Services
+@inject IActiveProjectStore ActiveProjectStore
 
 <MudText Typo="Typo.h4" GutterBottom="true">Dev Agent Studio</MudText>
 <MudText Typo="Typo.body1" Class="mb-4">
-    Foundation is ready. Continue setup from Projects and Settings.
+    @if (ActiveProjectStore.Current is not null)
+    {
+        <span>Active project: <b>@ActiveProjectStore.Current.Name</b>. Open the board to manage your tasks.</span>
+    }
+    else
+    {
+        <span>Foundation is ready. Continue setup from Projects and Settings.</span>
+    }
 </MudText>
 
 <MudStack Row="true" Spacing="2">
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/projects" StartIcon="@Icons.Material.Filled.Folder">
-        Open Projects
-    </MudButton>
+    @if (ActiveProjectStore.Current is not null)
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/board" StartIcon="@Icons.Material.Filled.ViewKanban">
+            Open Board
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/projects" StartIcon="@Icons.Material.Filled.Folder">
+            Manage Projects
+        </MudButton>
+    }
+    else
+    {
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/projects" StartIcon="@Icons.Material.Filled.Folder">
+            Open Projects
+        </MudButton>
+    }
     <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="/settings" StartIcon="@Icons.Material.Filled.Settings">
         Open Settings
     </MudButton>

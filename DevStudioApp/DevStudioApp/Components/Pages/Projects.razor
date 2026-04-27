@@ -3,6 +3,8 @@
 @using DevStudioApp.Services
 @using DevStudioDomain.Entities
 @inject IProjectService ProjectService
+@inject IFolderPickerService FolderPickerService
+@inject IActiveProjectStore ActiveProjectStore
 @inject ISnackbar Snackbar
 @inject ILogger<Projects> Logger
 
@@ -21,7 +23,13 @@
                 <MudTextField Label="Project Name" @bind-Value="_model.Name" Required="true" />
             </MudItem>
             <MudItem xs="12" md="4">
-                <MudTextField Label="Local Repository Folder" @bind-Value="_model.LocalRepoPath" Required="true" />
+                <MudStack Row="true" AlignItems="AlignItems.End" Spacing="1">
+                    <MudTextField Label="Local Repository Folder" @bind-Value="_model.LocalRepoPath" Required="true" Class="flex-grow-1" />
+                    <MudIconButton Icon="@Icons.Material.Filled.FolderOpen"
+                                   Color="Color.Primary"
+                                   OnClick="BrowseFolderAsync"
+                                   aria-label="Browse for folder" />
+                </MudStack>
             </MudItem>
             <MudItem xs="12" md="4">
                 <MudTextField Label="Azure Repos URL" @bind-Value="_model.RemoteAzureRepoUrl" Required="true" />
@@ -120,6 +128,7 @@
 
         ResetForm();
         await LoadAsync();
+        await ActiveProjectStore.RefreshAsync();
     }
 
     private void StartEdit(Project project)
@@ -152,13 +161,23 @@
         Snackbar.Add("Project deleted.", Severity.Info);
         Logger.LogInformation("Project {ProjectId} deleted.", projectId);
         await LoadAsync();
+        await ActiveProjectStore.RefreshAsync();
     }
 
     private async Task SetActiveAsync(int projectId)
     {
-        await ProjectService.SetActiveProjectIdAsync(projectId);
+        await ActiveProjectStore.SetActiveAsync(projectId);
         _activeProjectId = projectId;
         Snackbar.Add("Active project updated.", Severity.Success);
+    }
+
+    private async Task BrowseFolderAsync()
+    {
+        var picked = await FolderPickerService.PickFolderAsync(_model.LocalRepoPath);
+        if (!string.IsNullOrWhiteSpace(picked))
+        {
+            _model.LocalRepoPath = picked;
+        }
     }
 
     private sealed class ProjectModel

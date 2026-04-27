@@ -11,17 +11,18 @@ public class WorkItem
     [MaxLength(200)]
     public string Title { get; set; } = string.Empty;
 
-    [MaxLength(1000)]
+    [MaxLength(10000)]
     public string Description { get; set; } = string.Empty;
 
     [Required]
-    public string Status { get; set; } = "backlog";
-    // Status values: backlog, planning, executing, waiting-for-review, in-review, done
+    [MaxLength(40)]
+    public string Status { get; set; } = KanbanStatuses.Backlog;
+
+    public int Order { get; set; }
 
     [MaxLength(10000)]
     public string? Plan { get; set; }
 
-    // Git/PR tracking
     [MaxLength(200)]
     public string? BranchName { get; set; }
 
@@ -32,6 +33,6 @@ public class WorkItem
 
     public Project Project { get; set; } = null!;
 
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
 }

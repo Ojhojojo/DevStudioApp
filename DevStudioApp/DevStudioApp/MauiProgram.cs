@@ -1,9 +1,12 @@
-﻿using Microsoft.Extensions.Logging;
-using MudBlazor.Services;
-using System.IO;
+﻿using CommunityToolkit.Maui;
+using DevStudioApp.Extensions;
 using DevStudioApp.Services;
 using DevStudioDomain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using MudBlazor;
+using MudExtensions.Services;
+using MudBlazor.Services;
 using Serilog;
 
 namespace DevStudioApp
@@ -23,6 +26,7 @@ namespace DevStudioApp
 
             builder
                 .UseMauiApp<App>()
+                .UseMauiCommunityToolkit()
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -33,16 +37,10 @@ namespace DevStudioApp
 
             builder.Services.AddMauiBlazorWebView();
             builder.Services.AddMudServices();
-            builder.Services.AddDbContext<AppDbContext>(options =>
-            {
-                var dbPath = Path.Combine(FileSystem.AppDataDirectory, "devstudio.db");
-                options.UseSqlite($"Data Source={dbPath}");
-            });
-            builder.Services.AddScoped<IProjectService, ProjectService>();
-            builder.Services.AddScoped<IAppSettingsService, AppSettingsService>();
-            builder.Services.AddScoped<ITokenService, TokenService>();
-            builder.Services.AddScoped<IConnectivityTestService, ConnectivityTestService>();
-            builder.Services.AddScoped<ISetupStatusService, SetupStatusService>();
+            builder.Services.AddMudExtensions();
+            builder.Services.AddMudMarkdownServices();
+
+            builder.Services.AddProjectServices();
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
@@ -53,6 +51,9 @@ namespace DevStudioApp
             using var scope = app.Services.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             dbContext.Database.Migrate();
+
+            var activeProjectStore = app.Services.GetRequiredService<IActiveProjectStore>();
+            activeProjectStore.InitializeAsync().GetAwaiter().GetResult();
 
             return app;
         }

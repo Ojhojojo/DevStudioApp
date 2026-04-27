@@ -1,9 +1,15 @@
 ﻿@inherits LayoutComponentBase
 @implements IDisposable
+@using DevStudioApp.Services
+@using DevStudioDomain.Entities
 @inject NavigationManager NavigationManager
-@inject DevStudioApp.Services.ISetupStatusService SetupStatusService
+@inject ISetupStatusService SetupStatusService
+@inject IActiveProjectStore ActiveProjectStore
+@inject IProjectService ProjectService
+@inject IAppSettingsService AppSettingsService
 
 <MudThemeProvider @bind-IsDarkMode="_isDarkMode" Theme="_theme" />
+<MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
@@ -11,11 +17,46 @@
     <MudAppBar Elevation="1" Color="Color.Primary">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
         <MudText Typo="Typo.h6" Class="ml-2">Dev Agent Studio</MudText>
+
+        <MudMenu Class="ml-4"
+                 AnchorOrigin="Origin.BottomLeft"
+                 TransformOrigin="Origin.TopLeft">
+            <ActivatorContent>
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           StartIcon="@Icons.Material.Filled.Folder"
+                           EndIcon="@Icons.Material.Filled.ArrowDropDown">
+                    @(ActiveProjectStore.Current?.Name ?? "No project selected")
+                </MudButton>
+            </ActivatorContent>
+            <ChildContent>
+                @if (_projects.Count == 0)
+                {
+                    <MudMenuItem Disabled="true">No projects available</MudMenuItem>
+                }
+                else
+                {
+                    @foreach (var project in _projects)
+                    {
+                        var isActive = ActiveProjectStore.Current?.Id == project.Id;
+                        <MudMenuItem OnClick="() => SelectProjectAsync(project.Id)"
+                                     Icon="@(isActive ? Icons.Material.Filled.Check : null)">
+                            @project.Name
+                        </MudMenuItem>
+                    }
+                }
+                <MudDivider />
+                <MudMenuItem Icon="@Icons.Material.Filled.Settings" OnClick="GoToProjects">
+                    Manage projects...
+                </MudMenuItem>
+            </ChildContent>
+        </MudMenu>
+
         <MudSpacer />
         <MudIconButton
             Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
             Color="Color.Inherit"
-            OnClick="ToggleTheme"
+            OnClick="ToggleThemeAsync"
             aria-label="Toggle theme" />
         <MudIconButton
             Icon="@Icons.Material.Filled.Settings"
@@ -39,6 +80,7 @@
     private bool _drawerOpen = true;
     private bool _isDarkMode;
     private bool _isCheckingSetup;
+    private List<Project> _projects = new();
 
     private readonly MudTheme _theme = new()
     {
@@ -52,19 +94,47 @@
         }
     };
 
+    protected override async Task OnInitializedAsync()
+    {
+        NavigationManager.LocationChanged += OnLocationChanged;
+        ActiveProjectStore.OnChange += HandleActiveChanged;
+
+        var settings = await AppSettingsService.GetAsync();
+        _isDarkMode = string.Equals(settings.Theme, "dark", StringComparison.OrdinalIgnoreCase);
+
+        await LoadProjectsAsync();
+    }
+
+    private async Task LoadProjectsAsync()
+    {
+        _projects = await ProjectService.ListAsync();
+    }
+
+    private async void HandleActiveChanged()
+    {
+        await LoadProjectsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SelectProjectAsync(int projectId)
+    {
+        await ActiveProjectStore.SetActiveAsync(projectId);
+        NavigationManager.NavigateTo("/board");
+    }
+
+    private void GoToProjects() => NavigationManager.NavigateTo("/projects");
+
     private void ToggleDrawer()
     {
         _drawerOpen = !_drawerOpen;
     }
 
-    private void ToggleTheme()
+    private async Task ToggleThemeAsync()
     {
         _isDarkMode = !_isDarkMode;
-    }
-
-    protected override void OnInitialized()
-    {
-        NavigationManager.LocationChanged += OnLocationChanged;
+        var settings = await AppSettingsService.GetAsync();
+        settings.Theme = _isDarkMode ? "dark" : "light";
+        await AppSettingsService.SaveAsync(settings);
     }
 
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -100,7 +170,8 @@
             var isAllowedRoute = string.IsNullOrWhiteSpace(path)
                 || path.StartsWith("settings")
                 || path.StartsWith("projects")
-                || path.StartsWith("onboarding");
+                || path.StartsWith("onboarding")
+                || path.StartsWith("board");
 
             if (!isAllowedRoute)
             {
@@ -116,5 +187,6 @@
     public void Dispose()
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
+        ActiveProjectStore.OnChange -= HandleActiveChanged;
     }
 }
